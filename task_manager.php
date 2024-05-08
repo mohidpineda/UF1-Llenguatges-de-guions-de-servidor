@@ -27,7 +27,7 @@ function listarTareas($conexion_db) {
             echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
         }
     } else {
-        die ("no hay tareas para mostrar\n");
+        echo "no hay tareas para mostrar\n";
     }
 }
 
@@ -39,7 +39,7 @@ function listarTareasCompletadas($conexion_db) {
             echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
         }
     } else {
-        die ("no hay tareas completadas\n");
+        echo "no hay tareas completadas\n";
     }
 }
 
@@ -61,28 +61,18 @@ function eliminarTarea($conexion_db, $idTarea) {
     }
 }
 
-if ($argc < 2) {
-    echo "-----------------------------------------------------------------\n";
-    echo "  uso: php task_manager.php <comando> [argumentos]\n";
-    echo "-----------------------------------------------------------------\n";
-    echo "  uso de las posibles opciones en el programa:\n";
-    echo "-----------------------------------------------------------------\n";
-    echo "  agregar <nombre> <descripción>: agrega una nueva tarea\n";
-    echo "  listar: lista todas las tareas\n";
-    echo "  completadas: lista las tareas completadas\n";
-    echo "  estado <id_tarea> <nuevo_estado>: cambia el estado de la tarea\n";
-    echo "  eliminar <id_tarea>: elimina una tarea\n";
-    echo "-----------------------------------------------------------------\n";
-    die();
-}
+$options = getopt("a:t:d:", ["accion:", "titulo:", "descripcion:", "id_tarea:", "nuevo_estado:"]);
 
-$opcion = $argv[1];
-switch ($opcion) {
+$accion = $options["a"] ?? $options["accion"] ?? "";
+$titulo = $options["t"] ?? $options["titulo"] ?? "";
+$descripcion = $options["d"] ?? $options["descripcion"] ?? "";
+
+switch ($accion) {
     case 'agregar':
-        if ($argc < 4) {
-            die("uso: php task_manager.php agregar <nombre> <descripcion>\n");
+        if (!$titulo || !$descripcion) {
+            die("uso: php task_manager.php -a|--accion agregar -t|--titulo=<nombre> -d|--descripcion=<descripcion>\n");
         }
-        agregarTarea($conexion_db, $argv[2], $argv[3]);
+        agregarTarea($conexion_db, $titulo, $descripcion);
         break;
     case 'listar':
         listarTareas($conexion_db);
@@ -91,19 +81,31 @@ switch ($opcion) {
         listarTareasCompletadas($conexion_db);
         break;
     case 'estado':
-        if ($argc < 4) {
-            die("uso: php task_manager.php estado <id_tarea> <nuevo_estado>\n");
+        $id_tarea = $options["id_tarea"] ?? "";
+        $nuevo_estado = $options["nuevo_estado"] ?? "";
+        if (!$id_tarea || !$nuevo_estado) {
+            die("uso: php task_manager.php -a|--accion estado --id_tarea=<id_tarea> --nuevo_estado=<nuevo_estado>\n");
         }
-        cambiarEstado($conexion_db, $argv[2], $argv[3]);
+        cambiarEstado($conexion_db, $id_tarea, $nuevo_estado);
         break;
     case 'eliminar':
-        if ($argc < 3) {
-            die("uso: php task_manager.php eliminar <id_tarea>\n");
+        $id_tarea = $options["id_tarea"] ?? "";
+        if (!$id_tarea) {
+            die("uso: php task_manager.php -a|--accion eliminar --id_tarea=<id_tarea>\n");
         }
-        eliminarTarea($conexion_db, $argv[2]);
+        eliminarTarea($conexion_db, $id_tarea);
         break;
     default:
-        die("comando no valido\n");
+        echo "----------------------------------------------------------------------\n";
+        echo "  uso: php task_manager.php <comando> [argumentos]\n";
+        echo "----------------------------------------------------------------------\n";
+        echo "  uso de las posibles opciones en el programa:\n";
+        echo "----------------------------------------------------------------------\n";
+        echo "  -a|--accion: agrega, lista, completa, cambia estado o elimina tareas\n";
+        echo "  -t|--titulo: especifica el titulo de la tarea\n";
+        echo "  -d|--descripcion: especifica la descripcion de la tarea\n";
+        echo "----------------------------------------------------------------------\n";
+        die();
 }
 
 mysqli_close($conexion_db);
