@@ -1,112 +1,233 @@
 <?php
-$sapi_type = php_sapi_name();
-if ($sapi_type != "cli") {
-    echo "este script solo esta disponible por ahora en la linea de comandos\n";
-    die ();
+$mensajes = json_decode(file_get_contents('../../mensajes/msgs.json'), true);
+
+if (php_sapi_name() != "cli") {
+    die($mensajes["msg01"] . "\n");
 }
 
-$conexion_db = include "../../conn/conn_db.php";
+$config_file = $_SERVER['HOME'] . '/.config/task_manager_config.txt';
+$primera_ejecucion = !file_exists($config_file);
 
-function agregarTarea($conexion_db, $nombre, $descripcion) {
+if ($primera_ejecucion) {
+    echo $mensajes["msg02"] . "\n";
+    $opcion = readline($mensajes["msg18"]);
+
+    switch ($opcion) {
+        case '1':
+            $configuracion = "mariadb";
+            break;
+        case '2':
+            $configuracion = "sqlite";
+            break;
+        default:
+            die($mensajes["msg03"] . "\n");
+    }
+
+    file_put_contents($config_file, $configuracion);
+} else {
+    $configuracion = file_get_contents($config_file);
+}
+
+switch ($configuracion) {
+    case 'mariadb':
+        $conexion_db = include "../../conn/conn_mariadb.php";
+
+        $crear_tabla = "CREATE TABLE IF NOT EXISTS tareas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            descripcion TEXT,
+            estado ENUM('pendiente', 'en progreso', 'por mejorar', 'completada') DEFAULT 'pendiente'
+        )";
+
+        mysqli_query($conexion_db, $crear_tabla);
+
+        break;
+    case 'sqlite':
+        $conexion_db = include "../../conn/conn_sqlite.php";
+
+        $crear_tabla = "CREATE TABLE IF NOT EXISTS tareas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            descripcion TEXT,
+            estado TEXT DEFAULT 'pendiente'
+        )";
+
+        $stmt = $conexion_db->prepare($crear_tabla);
+        $stmt->execute();
+        break;
+    default:
+        die($mensajes["msg17"] . "\n");
+}
+
+function agregarTarea($conexion_db, $nombre, $descripcion, $mensajes) {
     if (empty(trim($nombre)) || empty(trim($descripcion))) {
-        die ("el nombre o la descripcion de la tarea no pueden estar vacios\n");
+        die($mensajes["msg16"] . "\n");
     }
 
-    $insertar = "INSERT INTO tareas (nombre, descripcion, estado) VALUES ('$nombre', '$descripcion', 'pendiente')";
+    global $configuracion;
 
-    if (mysqli_query($conexion_db, $insertar)) {
-        echo "tarea añadida correctamente\n";
-    }
-}
-
-function listarTareas($conexion_db) {
-    $consulta = mysqli_query($conexion_db, "SELECT * FROM tareas WHERE estado != 'completada'");
-
-    if (mysqli_num_rows($consulta) > 0) {
-        while($fila = mysqli_fetch_assoc($consulta)) {
-            echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
-        }
-    } else {
-        echo "no hay tareas para mostrar\n";
+    switch ($configuracion) {
+        case 'mariadb':
+            $insertar = "INSERT INTO tareas (nombre, descripcion, estado) VALUES ('$nombre', '$descripcion', 'pendiente')";
+            if (mysqli_query($conexion_db, $insertar)) {
+                echo $mensajes["msg05"] . "\n";
+            }
+            break;
+        case 'sqlite':
+            $stmt = $conexion_db->prepare("INSERT INTO tareas (nombre, descripcion, estado) VALUES (?, ?, 'pendiente')");
+            $stmt->execute([$nombre, $descripcion]);
+            echo $mensajes["msg05"] . "\n";
+            break;
     }
 }
 
-function listarTareasCompletadas($conexion_db) {
-    $consulta = mysqli_query($conexion_db, "SELECT * FROM tareas WHERE estado = 'completada'");
+function listarTareas($conexion_db, $mensajes) {
+    global $configuracion;
 
-    if (mysqli_num_rows($consulta) > 0) {
-        while($fila = mysqli_fetch_assoc($consulta)) {
-            echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
-        }
-    } else {
-        echo "no hay tareas completadas\n";
+    switch ($configuracion) {
+        case 'mariadb':
+            $consulta = mysqli_query($conexion_db, "SELECT * FROM tareas WHERE estado != 'completada'");
+            if (mysqli_num_rows($consulta) > 0) {
+                while($fila = mysqli_fetch_assoc($consulta)) {
+                    echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
+                }
+            } else {
+                echo $mensajes["msg06"] . "\n";
+            }
+            break;
+        case 'sqlite':
+            $stmt = $conexion_db->query("SELECT * FROM tareas WHERE estado != 'completada'");
+            $tareas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (count($tareas) > 0) {
+                foreach ($tareas as $fila) {
+                    echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
+                }
+            } else {
+                echo $mensajes["msg06"] . "\n";
+            }
+            break;
     }
 }
 
-function cambiarEstado($conexion_db, $idTarea, $nuevoEstado) {
+function listarTareasCompletadas($conexion_db, $mensajes) {
+    global $configuracion;
+
+    switch ($configuracion) {
+        case 'mariadb':
+            $consulta = mysqli_query($conexion_db, "SELECT * FROM tareas WHERE estado = 'completada'");
+            if (mysqli_num_rows($consulta) > 0) {
+                while($fila = mysqli_fetch_assoc($consulta)) {
+                    echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
+                }
+            } else {
+                echo $mensajes["msg07"] . "\n";
+            }
+            break;
+        case 'sqlite':
+            $stmt = $conexion_db->query("SELECT * FROM tareas WHERE estado = 'completada'");
+            $tareas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (count($tareas) > 0) {
+                foreach ($tareas as $fila) {
+                    echo "[{$fila['id']}] {$fila['nombre']} - {$fila['descripcion']} - {$fila['estado']}\n";
+                }
+            } else {
+                echo $mensajes["msg07"] . "\n";
+            }
+            break;
+    }
+}
+
+function cambiarEstado($conexion_db, $idTarea, $nuevoEstado, $mensajes) {
+    global $configuracion;
+
     $cambioEstado = "UPDATE tareas SET estado = '$nuevoEstado' WHERE id = $idTarea";
-    if (mysqli_query($conexion_db, $cambioEstado)) {
-        echo "tarea modificada con exito\n";
+    switch ($configuracion) {
+        case 'mariadb':
+            if (mysqli_query($conexion_db, $cambioEstado)) {
+                echo $mensajes["msg08"] . "\n";
+            }
+            break;
+        case 'sqlite':
+            $stmt = $conexion_db->prepare($cambioEstado);
+            $stmt->execute();
+            echo $mensajes["msg08"] . "\n";
+            break;
     }
 }
 
-function eliminarTarea($conexion_db, $idTarea) {
+function eliminarTarea($conexion_db, $idTarea, $mensajes) {
+    global $configuracion;
+
     $eliminar = "DELETE FROM tareas WHERE id = $idTarea";
-    if (mysqli_query($conexion_db, $eliminar)) {
-        if (mysqli_affected_rows($conexion_db) > 0) {
-            echo "tarea eliminada con exito\n";
-        } else {
-            echo "la tarea que deseas eliminar no existe\n";
-        }
+    switch ($configuracion) {
+        case 'mariadb':
+            if (mysqli_query($conexion_db, $eliminar)) {
+                if (mysqli_affected_rows($conexion_db) > 0) {
+                    echo $mensajes["msg09"] . "\n";
+                } else {
+                    echo $mensajes["msg10"] . "\n";
+                }
+            }
+            break;
+        case 'sqlite':
+            $stmt = $conexion_db->prepare($eliminar);
+            $stmt->execute();
+            if ($stmt->rowCount() > 0) {
+                echo $mensajes["msg09"] . "\n";
+            } else {
+                echo $mensajes["msg10"] . "\n";
+            }
+            break;
     }
 }
 
-$options = getopt("a:t:d:", ["accion:", "titulo:", "descripcion:", "id_tarea:", "nuevo_estado:"]);
-
+$options = getopt("a:t:d:i:n:", ["accion:", "titulo:", "descripcion:", "id_tarea:", "nuevo_estado:"]);
 $accion = $options["a"] ?? $options["accion"] ?? "";
-$titulo = $options["t"] ?? $options["titulo"] ?? "";
-$descripcion = $options["d"] ?? $options["descripcion"] ?? "";
 
 switch ($accion) {
     case 'agregar':
+        $titulo = $options["t"] ?? $options["titulo"] ?? "";
+        $descripcion = $options["d"] ?? $options["descripcion"] ?? "";
         if (!$titulo || !$descripcion) {
-            die("uso: php task_manager.php -a|--accion agregar -t|--titulo=<nombre> -d|--descripcion=<descripcion>\n");
+            die($mensajes["msg14"] . "\n");
         }
-        agregarTarea($conexion_db, $titulo, $descripcion);
+        agregarTarea($conexion_db, $titulo, $descripcion, $mensajes);
         break;
     case 'listar':
-        listarTareas($conexion_db);
+        listarTareas($conexion_db, $mensajes);
         break;
     case 'completadas':
-        listarTareasCompletadas($conexion_db);
+        listarTareasCompletadas($conexion_db, $mensajes);
         break;
     case 'estado':
-        $id_tarea = $options["id_tarea"] ?? "";
-        $nuevo_estado = $options["nuevo_estado"] ?? "";
+        $id_tarea = $options["i"] ?? $options["id_tarea"] ?? "";
+        $nuevo_estado = $options["n"] ?? $options["nuevo_estado"] ?? "";
         if (!$id_tarea || !$nuevo_estado) {
-            die("uso: php task_manager.php -a|--accion estado --id_tarea=<id_tarea> --nuevo_estado=<nuevo_estado>\n");
+            if ($configuracion === 'sqlite') {
+                die($mensajes["msg12"] . "\n");
+            } else {
+                die($mensajes["msg15"] . "\n");
+            }
         }
-        cambiarEstado($conexion_db, $id_tarea, $nuevo_estado);
+        cambiarEstado($conexion_db, $id_tarea, $nuevo_estado, $mensajes);
         break;
     case 'eliminar':
-        $id_tarea = $options["id_tarea"] ?? "";
+        $id_tarea = $options["i"] ?? $options["id_tarea"] ?? "";
         if (!$id_tarea) {
-            die("uso: php task_manager.php -a|--accion eliminar --id_tarea=<id_tarea>\n");
+            die($mensajes["msg13"] . "\n");
         }
-        eliminarTarea($conexion_db, $id_tarea);
+        eliminarTarea($conexion_db, $id_tarea, $mensajes);
         break;
     default:
-        echo "----------------------------------------------------------------------\n";
-        echo "  uso: php task_manager.php <comando> [argumentos]\n";
-        echo "----------------------------------------------------------------------\n";
-        echo "  uso de las posibles opciones en el programa:\n";
-        echo "----------------------------------------------------------------------\n";
-        echo "  -a|--accion: agrega, lista, completa, cambia estado o elimina tareas\n";
-        echo "  -t|--titulo: especifica el titulo de la tarea\n";
-        echo "  -d|--descripcion: especifica la descripcion de la tarea\n";
-        echo "----------------------------------------------------------------------\n";
-        die();
+        die($mensajes["msg11"] . "\n");
 }
 
-mysqli_close($conexion_db);
+switch ($configuracion) {
+    case 'mariadb':
+        mysqli_close($conexion_db);
+        break;
+    case 'sqlite':
+        $conexion_db = null;
+        break;
+}
 ?>
