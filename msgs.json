@@ -1,0 +1,19 @@
+{
+    "msg01": "este script solo esta disponible por ahora en la linea de comandos",
+    "msg02": "es la primera vez que ejecutas esta aplicacion (cli).\n elige como quieres gestionar tus tareas:\n 1. mariadb\n 2. sqlite",
+    "msg03": "opcion invalida.",
+    "msg05": "tarea añadida correctamente",
+    "msg06": "no hay tareas para mostrar",
+    "msg07": "no hay tareas completadas",
+    "msg08": "tarea modificada con exito",
+    "msg09": "tarea eliminada con exito",
+    "msg10": "la tarea que deseas eliminar no existe",
+    "msg11": " ----------------------------------------------------------------------\n uso: php task_manager.php <comando> [argumentos]\n ----------------------------------------------------------------------\n uso de las posibles opciones en el programa:\n ----------------------------------------------------------------------\n -a|--accion: agrega, listar, completadas, estado o eliminar\n -t|--titulo: especifica el titulo de la tarea\n -d|--descripcion: especifica la descripcion de la tarea\n ----------------------------------------------------------------------",
+    "msg12": "uso: php task_manager.php -a|--accion estado -i|--id_tarea=<id_tarea> -n|--nuevo_estado=<nuevo_estado>\n",
+    "msg13": "uso: php task_manager.php -a|--accion eliminar -i|--id_tarea=<id_tarea>\n",
+    "msg14": "uso: php task_manager.php -a|--accion agregar -t|--titulo=<nombre> -d|--descripcion=<descripcion>\n",
+    "msg15": "uso: php task_manager.php -a|--accion estado --id_tarea=<id_tarea> --nuevo_estado=<nuevo_estado>\nposibles estados: 'pendiente', 'en progreso', 'por mejorar', 'completada'.\n",
+    "msg16": "el nombre o la descripcion de la tarea no pueden estar vacios",
+    "msg17": "configuracion invalida",
+    "msg18": "selecciona una opcion (1 o 2): "
+}
