@@ -1,0 +1,5 @@
+para cambiar de metodo para almacenar las tareas elimine el siguiente fichero de configuracion:
+
+/home/tu-nombre-de-usuario/.config/task_manager_config.txt
+
+despues ejecute de nuevo el script y elijas su nuevo metodo para almacenar las tareas
